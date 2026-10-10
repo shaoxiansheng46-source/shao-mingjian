@@ -1,0 +1,22 @@
+[
+  {
+    "id": "DEMO_RULES_001",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "insulation_rule_id": "DEMO_INS_001",
+    "main_insulation_min_mm": 2.0,
+    "winding_to_core_min_mm": 1.0,
+    "end_margin_each_min_mm": 3.0,
+    "creepage_required_mm": null,
+    "clearance_required_mm": null,
+    "insulation_result_status": "demo_rule_check_only",
+    "layer_insulation_id": "DEMO_FILM_0p2",
+    "B_derating": 0.55,
+    "window_copper_prefilter_Ku": 0.45,
+    "maximum_equivalent_gap_mm": 1.5,
+    "note": "Distances are synthetic demo rules, not an insulation coordination standard"
+  }
+]

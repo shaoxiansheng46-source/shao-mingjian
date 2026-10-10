@@ -1,0 +1,95 @@
+[
+  {
+    "id": "DEMO_LAYOUT_PS",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "block_order": [
+      "P",
+      "S"
+    ],
+    "enabled": true,
+    "disabled_reason": null,
+    "orientation": "axial_turns_radial_layers",
+    "parallel_bundle_placement": "radial",
+    "process_clearance_mm": 0.15,
+    "layer_insulation_id": "DEMO_FILM_0p2",
+    "main_insulation_id": "DEMO_BARRIER_1p0",
+    "main_insulation_layers_choices": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "mlt_model_id": "DEMO_RECTANGULAR_PERIMETER",
+    "leakage_model_id": "DEMO_PS_1D",
+    "capacitance_model_id": "DEMO_PARALLEL_PLATE",
+    "thermal_model_id": "DEMO_THERMAL_001",
+    "validity_note": "Synthetic uniform-height geometry only; no engineering calibration"
+  },
+  {
+    "id": "DEMO_LAYOUT_PSP",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "block_order": [
+      "P/2",
+      "S",
+      "P/2"
+    ],
+    "enabled": false,
+    "disabled_reason": "Block leakage model not implemented in demo runner",
+    "orientation": "axial_turns_radial_layers",
+    "parallel_bundle_placement": "radial",
+    "process_clearance_mm": 0.15,
+    "layer_insulation_id": "DEMO_FILM_0p2",
+    "main_insulation_id": "DEMO_BARRIER_1p0",
+    "main_insulation_layers_choices": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "mlt_model_id": "DEMO_RECTANGULAR_PERIMETER",
+    "leakage_model_id": null,
+    "capacitance_model_id": null,
+    "thermal_model_id": "DEMO_THERMAL_001",
+    "validity_note": "Synthetic uniform-height geometry only; no engineering calibration"
+  },
+  {
+    "id": "DEMO_LAYOUT_SPLIT",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "block_order": [
+      "P1",
+      "S1",
+      "P2",
+      "S2"
+    ],
+    "enabled": false,
+    "disabled_reason": "Segmented geometry/leakage model not implemented",
+    "orientation": "axial_turns_radial_layers",
+    "parallel_bundle_placement": "radial",
+    "process_clearance_mm": 0.15,
+    "layer_insulation_id": "DEMO_FILM_0p2",
+    "main_insulation_id": "DEMO_BARRIER_1p0",
+    "main_insulation_layers_choices": [
+      2,
+      3,
+      4,
+      5
+    ],
+    "mlt_model_id": "DEMO_RECTANGULAR_PERIMETER",
+    "leakage_model_id": null,
+    "capacitance_model_id": null,
+    "thermal_model_id": "DEMO_THERMAL_001",
+    "validity_note": "Synthetic uniform-height geometry only; no engineering calibration"
+  }
+]

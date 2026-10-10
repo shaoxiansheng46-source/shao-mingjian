@@ -1,0 +1,108 @@
+[
+  {
+    "id": "DEMO_FERRITE_A",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "name": "DEMO_FERRITE_A",
+    "density_kg_m3": 4800,
+    "mu_e": 2200,
+    "Bsat_vs_T": [
+      {
+        "T_C": 20,
+        "Bsat_T": 0.48
+      },
+      {
+        "T_C": 100,
+        "Bsat_T": 0.4
+      },
+      {
+        "T_C": 140,
+        "Bsat_T": 0.35
+      }
+    ],
+    "B_derating": 0.55,
+    "loss_model_id": "DEMO_IGSE_TRIANGLE",
+    "loss_parameters": {
+      "ki": 0.12,
+      "alpha": 1.5,
+      "beta": 2.5,
+      "ki_units": "W/m3 / ((T/s)^alpha * T^(beta-alpha))",
+      "frequency_unit": "Hz",
+      "flux_density_unit": "T",
+      "loss_density_unit": "W/m3",
+      "temperature_coefficient_per_K": 0.002,
+      "reference_temperature_C": 80
+    },
+    "valid_range": {
+      "f_Hz": [
+        10000,
+        100000
+      ],
+      "Bpk_T": [
+        0.02,
+        0.25
+      ],
+      "T_C": [
+        20,
+        140
+      ]
+    },
+    "uncertainty": null
+  },
+  {
+    "id": "DEMO_FERRITE_B",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "name": "DEMO_FERRITE_B",
+    "density_kg_m3": 4900,
+    "mu_e": 2600,
+    "Bsat_vs_T": [
+      {
+        "T_C": 20,
+        "Bsat_T": 0.48
+      },
+      {
+        "T_C": 100,
+        "Bsat_T": 0.4
+      },
+      {
+        "T_C": 140,
+        "Bsat_T": 0.35
+      }
+    ],
+    "B_derating": 0.55,
+    "loss_model_id": "DEMO_IGSE_TRIANGLE",
+    "loss_parameters": {
+      "ki": 0.04,
+      "alpha": 1.5,
+      "beta": 2.5,
+      "ki_units": "W/m3 / ((T/s)^alpha * T^(beta-alpha))",
+      "frequency_unit": "Hz",
+      "flux_density_unit": "T",
+      "loss_density_unit": "W/m3",
+      "temperature_coefficient_per_K": 0.002,
+      "reference_temperature_C": 80
+    },
+    "valid_range": {
+      "f_Hz": [
+        10000,
+        100000
+      ],
+      "Bpk_T": [
+        0.02,
+        0.25
+      ],
+      "T_C": [
+        20,
+        140
+      ]
+    },
+    "uncertainty": null
+  }
+]

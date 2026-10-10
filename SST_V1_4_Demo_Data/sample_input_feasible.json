@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.4",
+  "data_mode": "demo",
+  "project_name": "synthetic_100kW_DAB",
+  "topology": "DAB_SPS",
+  "current_mode": "system_sps",
+  "bridge_duty": 0.5,
+  "operating_points": [
+    {
+      "id": "rated",
+      "V1_dc_V": 800,
+      "V2_dc_V": 400,
+      "P_req_W": 100000,
+      "fs_Hz": 20000,
+      "T_amb_C": 40
+    }
+  ],
+  "inductance": {
+    "reference_side": "primary",
+    "leakage_mode": "integrated",
+    "L_series_target_H": 2e-05,
+    "relative_tolerance": 0.1,
+    "Lm_min_H": 0.0005
+  },
+  "design_rules": {
+    "rule_set_id": "DEMO_RULES_001",
+    "insulation_rule_id": "DEMO_INS_001",
+    "Jp_max_A_per_mm2": 3,
+    "Js_max_A_per_mm2": 3,
+    "turns_ratio_error_max": 0.02,
+    "deltaT_w_max_K": 60,
+    "Tw_max_C": 110,
+    "Tc_max_C": 110,
+    "volume_max_L": 10,
+    "mass_max_kg": 20
+  },
+  "cooling": {
+    "mode": "forced_air",
+    "thermal_model_id": "DEMO_THERMAL_001"
+  },
+  "search": {
+    "allowed_layouts": [
+      "DEMO_LAYOUT_PS"
+    ],
+    "Np_min": 10,
+    "Np_max": 32,
+    "Np_step": 2,
+    "parallel_bundles_max": 2,
+    "core_assembly_max": 1,
+    "population": 100,
+    "generations": 200,
+    "seed": 20261009
+  }
+}

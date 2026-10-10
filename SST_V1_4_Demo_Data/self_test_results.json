@@ -1,0 +1,14 @@
+{
+  "database_checks": "passed",
+  "feasible_case": "passed",
+  "infeasible_case": "passed",
+  "engineering_guard": "passed",
+  "waveform_guard": "passed",
+  "blocked_errors": [
+    "SYNTHETIC_DATA_BLOCKED_IN_ENGINEERING",
+    "UNSUPPORTED_WAVEFORM"
+  ],
+  "candidate_count": 14400,
+  "feasible_count": 34,
+  "pareto_count": 2
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "DEMO_IGSE_TRIANGLE",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "core_loss",
+    "enabled": true,
+    "equation": "pv=ki*(4*f*Bpk)^alpha*(2*Bpk)^(beta-alpha)"
+  },
+  {
+    "id": "DEMO_UNIFORM_RELUCTANCE",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "magnetizing_inductance",
+    "enabled": true,
+    "equation": "Lm=mu0*Np^2*Ae/(le/mu_e+g_eq)"
+  },
+  {
+    "id": "DEMO_PS_1D",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "leakage",
+    "enabled": true,
+    "geometry_factor": 1,
+    "equation": "mu0*Np^2*MLT/h*(bp/3+dps+bs/3)",
+    "limitation": "uniform-height P-S; uncalibrated"
+  },
+  {
+    "id": "DEMO_FR_EMPIRICAL",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "ac_resistance",
+    "enabled": true,
+    "base_Fr": 1.25,
+    "frequency_exponent": 0.25,
+    "additional_Fr_per_extra_layer": 0.08,
+    "equation": "Fr=1.25*(f/20kHz)^0.25+0.08*(layers-1)",
+    "limitation": "Artificial integration-test function, NOT a validated litz/Dowell model"
+  },
+  {
+    "id": "DEMO_PARALLEL_PLATE",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "capacitance",
+    "enabled": true,
+    "equation": "C=epsilon0*epsilon_r*A_overlap/dps"
+  },
+  {
+    "id": "DEMO_RECTANGULAR_PERIMETER",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "geometry",
+    "enabled": true,
+    "equation": "MLT_layer=2*(leg_w+leg_d)+8*radial_center"
+  },
+  {
+    "id": "DEMO_THERMAL_001",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "kind": "thermal",
+    "enabled": true,
+    "Rca_K_W": 0.18,
+    "Rwa_K_W": 0.08,
+    "Rcw_K_W": 0.3,
+    "cooling_mode": "forced_air",
+    "reference_air_speed_m_s": 4,
+    "effective_for_all_demo_cores": true,
+    "hotspot_correction": null,
+    "limitation": "Artificial thermal resistances, not derived from a real product"
+  }
+]

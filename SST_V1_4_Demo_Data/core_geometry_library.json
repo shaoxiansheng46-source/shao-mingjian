@@ -1,0 +1,146 @@
+[
+  {
+    "id": "DEMO_CORE_L",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "core_family": "DEMO_RECT_FRAME",
+    "material_id": "DEMO_FERRITE_A",
+    "assembly_type": "single_explicit_assembly",
+    "quantity": 1,
+    "Ae_mm2": 3000,
+    "Amin_mm2": 3000,
+    "Aw_mm2": 5200,
+    "window_definition": "one_window",
+    "le_mm": 450,
+    "Ve_mm3": 1050000,
+    "mass_kg": 5.040000000000001,
+    "core_outer_mm": [
+      210,
+      70,
+      120
+    ],
+    "leg_width_mm": 60,
+    "leg_depth_mm": 50,
+    "window_height_mm": 80,
+    "window_width_mm": 65,
+    "bobbin_wall_mm": 1.0,
+    "end_margin_each_mm": 3.0,
+    "radial_margin_mm": 2.0,
+    "geometry_tolerance_mm": 0.2,
+    "allowed_layout_ids": [
+      "DEMO_LAYOUT_PS"
+    ],
+    "equivalent_gap_range_mm": [
+      0,
+      1.5
+    ],
+    "equivalent_gap_step_mm": 0.05,
+    "gap_positions": [
+      {
+        "position": "center_leg_joint",
+        "total_gap_fraction": 1.0
+      }
+    ],
+    "gap_model_id": "DEMO_UNIFORM_RELUCTANCE",
+    "uncertainty": null
+  },
+  {
+    "id": "DEMO_CORE_XL",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "core_family": "DEMO_RECT_FRAME",
+    "material_id": "DEMO_FERRITE_A",
+    "assembly_type": "single_explicit_assembly",
+    "quantity": 1,
+    "Ae_mm2": 4200,
+    "Amin_mm2": 4200,
+    "Aw_mm2": 7600,
+    "window_definition": "one_window",
+    "le_mm": 530,
+    "Ve_mm3": 1700000,
+    "mass_kg": 8.16,
+    "core_outer_mm": [
+      250,
+      80,
+      135
+    ],
+    "leg_width_mm": 70,
+    "leg_depth_mm": 60,
+    "window_height_mm": 95,
+    "window_width_mm": 80,
+    "bobbin_wall_mm": 1.0,
+    "end_margin_each_mm": 3.0,
+    "radial_margin_mm": 2.0,
+    "geometry_tolerance_mm": 0.2,
+    "allowed_layout_ids": [
+      "DEMO_LAYOUT_PS"
+    ],
+    "equivalent_gap_range_mm": [
+      0,
+      1.5
+    ],
+    "equivalent_gap_step_mm": 0.05,
+    "gap_positions": [
+      {
+        "position": "center_leg_joint",
+        "total_gap_fraction": 1.0
+      }
+    ],
+    "gap_model_id": "DEMO_UNIFORM_RELUCTANCE",
+    "uncertainty": null
+  },
+  {
+    "id": "DEMO_CORE_XXL",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "core_family": "DEMO_RECT_FRAME",
+    "material_id": "DEMO_FERRITE_B",
+    "assembly_type": "single_explicit_assembly",
+    "quantity": 1,
+    "Ae_mm2": 5600,
+    "Amin_mm2": 5600,
+    "Aw_mm2": 10450,
+    "window_definition": "one_window",
+    "le_mm": 610,
+    "Ve_mm3": 2400000,
+    "mass_kg": 11.760000000000002,
+    "core_outer_mm": [
+      290,
+      90,
+      150
+    ],
+    "leg_width_mm": 80,
+    "leg_depth_mm": 70,
+    "window_height_mm": 110,
+    "window_width_mm": 95,
+    "bobbin_wall_mm": 1.0,
+    "end_margin_each_mm": 3.0,
+    "radial_margin_mm": 2.0,
+    "geometry_tolerance_mm": 0.2,
+    "allowed_layout_ids": [
+      "DEMO_LAYOUT_PS"
+    ],
+    "equivalent_gap_range_mm": [
+      0,
+      1.5
+    ],
+    "equivalent_gap_step_mm": 0.05,
+    "gap_positions": [
+      {
+        "position": "center_leg_joint",
+        "total_gap_fraction": 1.0
+      }
+    ],
+    "gap_model_id": "DEMO_UNIFORM_RELUCTANCE",
+    "uncertainty": null
+  }
+]

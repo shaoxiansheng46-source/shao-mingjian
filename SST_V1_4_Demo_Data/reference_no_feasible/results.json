@@ -1,0 +1,22 @@
+{
+  "status": "no_feasible_solution",
+  "data_mode": "demo",
+  "pipeline": "data_checks/integer_candidates/packing/inductance/SPS_current/loss/thermal/constraints/Pareto/export",
+  "optimizer": "full_enumeration_reference",
+  "candidate_count": 14400,
+  "feasible_count": 0,
+  "pareto_count": 0,
+  "failure_counts": {
+    "leakage_tolerance": 5341,
+    "geometry_window_width": 8661,
+    "volume_max": 398
+  },
+  "pareto": [],
+  "data_hashes": {
+    "core_geometry_library.json": "82dcf8e35523bb7ca9cceca8de9870abdbfc9e27e4e4d9a6c909c1b8e1f1258d",
+    "core_material_library.json": "5e8f1c2c86e883299a5ba1b3062589435b63b0b8e6f432dcb10bbc138589511a",
+    "design_rule_library.json": "7e6fba1de1f942c2d72e2f593216e939a905e7c113d4cea5d55274c00e300046",
+    "insulation_library.json": "3bb86fb306a5226cccc1b82b7b254650b83e293e269faecd08d61bb25ae00121",
+    "litz_library.json": "94caba84d232a8bd954217d0bae036f18427edb4e5057ec9c762b4af74824cac"
+  }
+}

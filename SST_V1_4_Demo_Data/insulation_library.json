@@ -1,0 +1,53 @@
+[
+  {
+    "id": "DEMO_FILM_0p2",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "thickness_mm": 0.2,
+    "thickness_tolerance_mm": 0.02,
+    "epsilon_r": 3.2,
+    "epsilon_r_reference_frequency_Hz": 20000,
+    "thermal_conductivity_W_mK": 0.18,
+    "temperature_class_C": 155,
+    "density_kg_m3": 1300,
+    "dielectric_strength_kV_mm": null,
+    "limitation": "No dielectric/partial-discharge qualification is provided"
+  },
+  {
+    "id": "DEMO_PAPER_0p5",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "thickness_mm": 0.5,
+    "thickness_tolerance_mm": 0.02,
+    "epsilon_r": 3.8,
+    "epsilon_r_reference_frequency_Hz": 20000,
+    "thermal_conductivity_W_mK": 0.15,
+    "temperature_class_C": 155,
+    "density_kg_m3": 1300,
+    "dielectric_strength_kV_mm": null,
+    "limitation": "No dielectric/partial-discharge qualification is provided"
+  },
+  {
+    "id": "DEMO_BARRIER_1p0",
+    "revision": "demo-1",
+    "data_status": "synthetic",
+    "source": "Fictional values created for software integration tests only",
+    "created_date": "2026-10-09",
+    "engineering_approved": false,
+    "thickness_mm": 1.0,
+    "thickness_tolerance_mm": 0.02,
+    "epsilon_r": 4,
+    "epsilon_r_reference_frequency_Hz": 20000,
+    "thermal_conductivity_W_mK": 0.2,
+    "temperature_class_C": 155,
+    "density_kg_m3": 1300,
+    "dielectric_strength_kV_mm": null,
+    "limitation": "No dielectric/partial-discharge qualification is provided"
+  }
+]

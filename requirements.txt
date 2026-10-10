@@ -1,0 +1,5 @@
+fastapi==0.135.3
+uvicorn==0.41.0
+numpy==2.4.4
+pymoo==0.6.2
+pytest==9.0.2

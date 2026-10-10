@@ -1,0 +1,196 @@
+{
+  "status": "completed",
+  "data_mode": "demo",
+  "pipeline": "data_checks/integer_candidates/packing/inductance/SPS_current/loss/thermal/constraints/Pareto/export",
+  "optimizer": "full_enumeration_reference",
+  "candidate_count": 14400,
+  "feasible_count": 34,
+  "pareto_count": 2,
+  "failure_counts": {
+    "leakage_tolerance": 5341,
+    "geometry_window_width": 8661,
+    "core_model_range": 50,
+    "current_density": 265,
+    "flux_limit": 20,
+    "mass_max": 29
+  },
+  "pareto": [
+    {
+      "candidate_id": "557643d4e781",
+      "result_grade": "demo_only",
+      "data_status": "synthetic",
+      "core_id": "DEMO_CORE_XXL",
+      "material_id": "DEMO_FERRITE_B",
+      "layout_id": "DEMO_LAYOUT_PS",
+      "Np": 12,
+      "Ns": 6,
+      "n": 2.0,
+      "gap_equivalent_mm": 0,
+      "dps_mm": 2.0,
+      "primary": {
+        "turns": 12,
+        "layers": 2,
+        "turns_per_layer": [
+          7,
+          5
+        ],
+        "thickness_mm": 26.9,
+        "mean_turn_length_mm": 406.5666666666666,
+        "branch_length_m": 5.0287999999999995,
+        "Rdc_20C_ohm": 0.0014988087355307111,
+        "Acu_mm2": 62.83185307179587,
+        "parallel_bundles": 1,
+        "wire_id": "DEMO_LITZ_8000x0p1",
+        "mass_kg": 2.972634684219822
+      },
+      "secondary": {
+        "turns": 6,
+        "layers": 1,
+        "turns_per_layer": [
+          6
+        ],
+        "thickness_mm": 26.7,
+        "mean_turn_length_mm": 646.0,
+        "branch_length_m": 4.026,
+        "Rdc_20C_ohm": 0.0006049498855837022,
+        "Acu_mm2": 125.66370614359174,
+        "parallel_bundles": 2,
+        "wire_id": "DEMO_LITZ_8000x0p1",
+        "mass_kg": 4.759714937428016
+      },
+      "Lm_p_H": 0.004319205784408199,
+      "Lleak_p_H": 1.819213367647794e-05,
+      "Lseries_p_H": 1.819213367647794e-05,
+      "Lext_p_H": 0,
+      "volume_envelope_L": 3.915,
+      "mass_kg": 19.69234962164784,
+      "Cps_estimate_F": 9.6924078702459e-10,
+      "hotspot_status": "not_available",
+      "insulation_status": "demo_rule_check_only",
+      "points": [
+        {
+          "point_id": "rated",
+          "phase_D": 0.13081283266883065,
+          "phase_rad": 0.41096063410766925,
+          "Bpk_T": 0.1488095238095238,
+          "Ip_rms_A": 137.6941971505568,
+          "Is_rms_A": 274.797313997428,
+          "Jp_A_mm2": 2.1914712111581083,
+          "Js_A_mm2": 2.186767543553317,
+          "Pcore_W": 34.66799692558834,
+          "Pcu_p_W": 43.94012341013357,
+          "Pcu_s_W": 66.57319123076596,
+          "Ptotal_W": 145.18131156648786,
+          "Tc_est_C": 47.07621914381999,
+          "Tw_est_C": 48.46951863917681,
+          "deltaT_w_K": 8.469518639176812,
+          "Thotspot_est_C": null,
+          "spectrum_tail_current_energy_fraction_p": 0.0,
+          "thermal_iterations": 13
+        }
+      ],
+      "objectives": [
+        145.18131156648786,
+        3.915
+      ],
+      "model_warnings": [
+        "All values are fictional; no engineering qualification",
+        "Synthetic Fr is extrapolated to harmonics; residual energy assigned last-harmonic Fr",
+        "Vmag approximated by V1_dc; leakage split/induced-voltage model omitted",
+        "Shared synthetic thermal network; no hotspot or dielectric qualification"
+      ]
+    },
+    {
+      "candidate_id": "beda38e34b77",
+      "result_grade": "demo_only",
+      "data_status": "synthetic",
+      "core_id": "DEMO_CORE_XL",
+      "material_id": "DEMO_FERRITE_A",
+      "layout_id": "DEMO_LAYOUT_PS",
+      "Np": 12,
+      "Ns": 6,
+      "n": 2.0,
+      "gap_equivalent_mm": 0,
+      "dps_mm": 2.0,
+      "primary": {
+        "turns": 12,
+        "layers": 2,
+        "turns_per_layer": [
+          6,
+          6
+        ],
+        "thickness_mm": 26.9,
+        "mean_turn_length_mm": 375.59999999999997,
+        "branch_length_m": 4.6572000000000005,
+        "Rdc_20C_ohm": 0.0013917499290315044,
+        "Acu_mm2": 62.83185307179587,
+        "parallel_bundles": 1,
+        "wire_id": "DEMO_LITZ_8000x0p1",
+        "mass_kg": 2.7529737216331047
+      },
+      "secondary": {
+        "turns": 6,
+        "layers": 1,
+        "turns_per_layer": [
+          6
+        ],
+        "thickness_mm": 26.7,
+        "mean_turn_length_mm": 606.0,
+        "branch_length_m": 3.786,
+        "Rdc_20C_ohm": 0.0005703776122255083,
+        "Acu_mm2": 125.66370614359174,
+        "parallel_bundles": 2,
+        "wire_id": "DEMO_LITZ_8000x0p1",
+        "mass_kg": 4.475976342052277
+      },
+      "Lm_p_H": 0.0031547754876682524,
+      "Lleak_p_H": 1.9824941229984966e-05,
+      "Lseries_p_H": 1.9824941229984966e-05,
+      "Lext_p_H": 0,
+      "volume_envelope_L": 2.6999999999999997,
+      "mass_kg": 15.588950063685381,
+      "Cps_estimate_F": 7.735230973769587e-10,
+      "hotspot_status": "not_available",
+      "insulation_status": "demo_rule_check_only",
+      "points": [
+        {
+          "point_id": "rated",
+          "phase_D": 0.1449026650162044,
+          "phase_rad": 0.4552251479004905,
+          "Bpk_T": 0.19841269841269843,
+          "Ip_rms_A": 139.39006381217803,
+          "Is_rms_A": 277.88433920402963,
+          "Jp_A_mm2": 2.218461767360285,
+          "Js_A_mm2": 2.211333309607314,
+          "Pcore_W": 155.99477884134552,
+          "Pcu_p_W": 42.10868113976471,
+          "Pcu_s_W": 64.62935565373671,
+          "Ptotal_W": 262.73281563484693,
+          "Tc_est_C": 61.798340361740095,
+          "Tw_est_C": 51.330473978903264,
+          "deltaT_w_K": 11.330473978903264,
+          "Thotspot_est_C": null,
+          "spectrum_tail_current_energy_fraction_p": 3.707207559138386e-05,
+          "thermal_iterations": 14
+        }
+      ],
+      "objectives": [
+        262.73281563484693,
+        2.6999999999999997
+      ],
+      "model_warnings": [
+        "All values are fictional; no engineering qualification",
+        "Synthetic Fr is extrapolated to harmonics; residual energy assigned last-harmonic Fr",
+        "Vmag approximated by V1_dc; leakage split/induced-voltage model omitted",
+        "Shared synthetic thermal network; no hotspot or dielectric qualification"
+      ]
+    }
+  ],
+  "data_hashes": {
+    "core_geometry_library.json": "82dcf8e35523bb7ca9cceca8de9870abdbfc9e27e4e4d9a6c909c1b8e1f1258d",
+    "core_material_library.json": "5e8f1c2c86e883299a5ba1b3062589435b63b0b8e6f432dcb10bbc138589511a",
+    "design_rule_library.json": "7e6fba1de1f942c2d72e2f593216e939a905e7c113d4cea5d55274c00e300046",
+    "insulation_library.json": "3bb86fb306a5226cccc1b82b7b254650b83e293e269faecd08d61bb25ae00121",
+    "litz_library.json": "94caba84d232a8bd954217d0bae036f18427edb4e5057ec9c762b4af74824cac"
+  }
+}
