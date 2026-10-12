@@ -1,0 +1,18 @@
+[
+  {
+    "id": "DEMO_LAYOUT_PSP_V1_1",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "enabled": true,
+    "block_order": ["P1", "S", "P2"],
+    "placement": "radial",
+    "process_clearance_mm": 0.15,
+    "layer_insulation_id": "DEMO_FILM_0p2",
+    "main_insulation_id": "DEMO_BARRIER_1p0",
+    "main_insulation_layers_choices": [2, 3, 4, 5],
+    "mlt_model_id": "DEMO_RECTANGULAR_PERIMETER",
+    "leakage_model_id": "DEMO_PSP_LEAKAGE_ENERGY_V1_1",
+    "capacitance_model_id": "DEMO_PSP_INTERFACE_CAP_V1_1",
+    "thermal_model_id": "DEMO_THERMAL_001"
+  }
+]

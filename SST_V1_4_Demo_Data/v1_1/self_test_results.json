@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "checks": [
+    "combined_case",
+    "gap_unreachable",
+    "integer_voltage_pairs",
+    "power_recalculation",
+    "mass_no_solution"
+  ],
+  "combined_result": {
+    "candidate_id": "806befff4415",
+    "Np": 10,
+    "Ns": 5,
+    "gap_mm": 0.1,
+    "Lseries_uH": 28.62202196972023,
+    "system_loss_W": 197.42913434722925
+  },
+  "result_metadata": {
+    "data_version": "demo-package-1.4+v1.1-additive",
+    "model_version": "sst-demo-model-1.5.0+v1.1",
+    "seed": 20261012
+  }
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "DEMO_EXT_L_0",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "record_type": "external_inductor",
+    "description": "零电感旁路",
+    "installed_side": "primary",
+    "L_H": 0.0,
+    "Rdc_ohm": 0.0,
+    "volume_L": 0.0,
+    "mass_kg": 0.0,
+    "max_temperature_C": 130,
+    "thermal_model_id": "DEMO_EXT_THERMAL_001"
+  },
+  {
+    "id": "DEMO_EXT_L_10UH",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "record_type": "external_inductor",
+    "description": "10 μH 外置串联电感",
+    "installed_side": "primary",
+    "L_H": 0.00001,
+    "Rdc_ohm": 0.00035,
+    "volume_L": 0.12,
+    "mass_kg": 0.55,
+    "max_temperature_C": 130,
+    "thermal_model_id": "DEMO_EXT_THERMAL_001"
+  },
+  {
+    "id": "DEMO_EXT_L_20UH",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "record_type": "external_inductor",
+    "description": "20 μH 外置串联电感",
+    "installed_side": "primary",
+    "L_H": 0.00002,
+    "Rdc_ohm": 0.00050,
+    "volume_L": 0.18,
+    "mass_kg": 0.72,
+    "max_temperature_C": 130,
+    "thermal_model_id": "DEMO_EXT_THERMAL_001"
+  },
+  {
+    "id": "DEMO_EXT_L_10UH_S",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "record_type": "external_inductor",
+    "description": "副边安装 10 μH 外置串联电感（用于匝比平方折算演示）",
+    "installed_side": "secondary",
+    "L_H": 0.00001,
+    "Rdc_ohm": 0.00025,
+    "volume_L": 0.13,
+    "mass_kg": 0.60,
+    "max_temperature_C": 130,
+    "thermal_model_id": "DEMO_EXT_THERMAL_001"
+  }
+]

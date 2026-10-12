@@ -27,10 +27,11 @@ from pymoo.operators.crossover.sbx import SBX
 from pymoo.operators.mutation.pm import PM
 
 BASE = Path(__file__).resolve().parents[3] / "SST_V1_4_Demo_Data"
+V11_BASE = BASE / "v1_1"
 MU0 = 4 * math.pi * 1e-7
 EPS0 = 8.8541878128e-12
 MODEL_VERSION = "sst-demo-model-1.5.0"
-ENGINE_VERSION = "sst-engine-1.0.0"
+ENGINE_VERSION = "sst-engine-1.1.0"
 
 
 class InputValidationError(ValueError):
@@ -60,6 +61,16 @@ def load_database() -> dict[str, dict[str, Any]]:
         "rules": "design_rule_library.json",
     }
     db = {key: index(load_json(name)) for key, name in files.items()}
+    # V1.1 data is additive and versioned separately. The original V1.0/V1.4
+    # files are deliberately never overwritten so the reference path remains
+    # reproducible.
+    db["assemblies"] = index(json.loads((V11_BASE / "core_assembly_library.json").read_text(encoding="utf-8")))
+    db["inductors"] = index(json.loads((V11_BASE / "external_inductor_library.json").read_text(encoding="utf-8")))
+    for key, filename in (("layouts", "winding_layout_templates_v1_1.json"), ("models", "model_registry_v1_1.json")):
+        for item in json.loads((V11_BASE / filename).read_text(encoding="utf-8")):
+            if item["id"] in db[key]:
+                raise InputValidationError(f"duplicate_id:{key}:{item['id']}")
+            db[key][item["id"]] = item
     for name, entries in db.items():
         ids = list(entries)
         if len(ids) != len(set(ids)):
@@ -89,6 +100,24 @@ def load_database() -> dict[str, dict[str, Any]]:
         for key in ("mlt_model_id", "thermal_model_id", "leakage_model_id", "capacitance_model_id"):
             if layout.get(key) is not None and layout[key] not in db["models"]:
                 raise InputValidationError(f"missing_model:{layout['id']}:{key}")
+    for assembly in db["assemblies"].values():
+        if assembly["material_id"] not in db["materials"]:
+            raise InputValidationError(f"missing_material:{assembly['id']}")
+        if not all(core_id in db["cores"] for core_id in assembly["base_core_ids"]):
+            raise InputValidationError(f"missing_base_core:{assembly['id']}")
+        if assembly["assembly_count"] != len(assembly["base_core_ids"]):
+            raise InputValidationError(f"assembly_count_mismatch:{assembly['id']}")
+        if not math.isclose(assembly["Aw_mm2"], assembly["window_height_mm"] * assembly["window_width_mm"]):
+            raise InputValidationError(f"window_area_mismatch:{assembly['id']}")
+        if not all(x in db["layouts"] for x in assembly["allowed_layout_ids"]):
+            raise InputValidationError(f"missing_layout:{assembly['id']}")
+        if assembly["gap_model_id"] not in db["models"]:
+            raise InputValidationError(f"missing_gap_model:{assembly['id']}")
+    for inductor in db["inductors"].values():
+        if inductor["thermal_model_id"] not in db["models"]:
+            raise InputValidationError(f"missing_inductor_thermal:{inductor['id']}")
+        if inductor["L_H"] < 0 or inductor["Rdc_ohm"] < 0:
+            raise InputValidationError(f"negative_inductor_value:{inductor['id']}")
     return db
 
 
@@ -96,12 +125,38 @@ def data_snapshot(db: dict[str, dict[str, Any]]) -> dict[str, Any]:
     names = [
         "core_geometry_library.json", "core_material_library.json", "litz_library.json",
         "insulation_library.json", "winding_layout_templates.json", "design_rule_library.json",
-        "model_registry.json",
+        "model_registry.json", "v1_1/core_assembly_library.json", "v1_1/external_inductor_library.json",
+        "v1_1/winding_layout_templates_v1_1.json", "v1_1/model_registry_v1_1.json",
     ]
     return {
-        "data_version": "demo-package-1.4",
+        "data_version": "demo-package-1.4+v1.1-additive",
         "data_hashes": {name: hashlib.sha256((BASE / name).read_bytes()).hexdigest() for name in names},
         "record_counts": {key: len(value) for key, value in db.items()},
+    }
+
+
+def v11_config(inp: dict[str, Any]) -> dict[str, Any]:
+    """Return compatibility defaults without mutating the user's input."""
+    raw = inp.get("v1_1") or {}
+    gap = raw.get("gap") or {}
+    external = raw.get("external") or {}
+    return {
+        "enabled": bool(raw.get("enabled", False)),
+        "layout_mode": raw.get("layout_mode", "PS"),
+        "core_mode": raw.get("core_mode", "single"),
+        "core_assembly_ids": list(raw.get("core_assembly_ids") or []),
+        "gap": {
+            "mode": gap.get("mode", "zero"),
+            "target_mode": gap.get("target_mode", "lm_min"),
+            "Lm_target_H": gap.get("Lm_target_H"),
+            "Im_max_A": gap.get("Im_max_A"),
+            "candidate_values_mm": list(gap.get("candidate_values_mm") or []),
+        },
+        "external": {
+            "mode": external.get("mode", "integrated"),
+            "external_inductor_ids": list(external.get("external_inductor_ids") or []),
+            "comparison_boundary": external.get("comparison_boundary", "transformer_only"),
+        },
     }
 
 
@@ -117,19 +172,54 @@ def validate_input(inp: dict[str, Any], db: dict[str, dict[str, Any]] | None = N
         raise InputValidationError("UNSUPPORTED_WAVEFORM")
     if inp["current_mode"] != "system_sps":
         raise InputValidationError("UNSUPPORTED_CURRENT_MODE")
-    if inp["inductance"].get("leakage_mode") != "integrated":
+    features = v11_config(inp)
+    if not features["enabled"] and inp["inductance"].get("leakage_mode") != "integrated":
         raise InputValidationError("DEMO_SUPPORTS_INTEGRATED_ONLY")
+    if features["enabled"] and inp["inductance"].get("leakage_mode") not in {"integrated", "external_allowed"}:
+        raise InputValidationError("UNKNOWN_LEAKAGE_MODE")
+    if features["enabled"] and ((features["external"]["mode"] == "external_allowed") != (inp["inductance"].get("leakage_mode") == "external_allowed")):
+        raise InputValidationError("EXTERNAL_MODE_MISMATCH")
     layouts = inp["search"].get("allowed_layouts", [])
     if not layouts or any(layout not in db["layouts"] or not db["layouts"][layout]["enabled"] for layout in layouts):
         raise InputValidationError("NO_ENABLED_LAYOUT")
-    if any(layout != "DEMO_LAYOUT_PS" for layout in layouts):
+    if not features["enabled"] and any(layout != "DEMO_LAYOUT_PS" for layout in layouts):
         raise InputValidationError("DEMO_SUPPORTS_PS_ONLY")
+    if features["enabled"]:
+        if features["layout_mode"] == "PSP" and "DEMO_LAYOUT_PSP_V1_1" not in layouts:
+            raise InputValidationError("PSP_LAYOUT_NOT_SELECTED")
+        if features["layout_mode"] == "PS" and "DEMO_LAYOUT_PS" not in layouts:
+            raise InputValidationError("PS_LAYOUT_NOT_SELECTED")
+        if features["layout_mode"] not in {"PS", "PSP"}:
+            raise InputValidationError("UNKNOWN_LAYOUT_MODE")
+        if features["core_mode"] not in {"single", "combination", "both"}:
+            raise InputValidationError("UNKNOWN_CORE_MODE")
+        if features["core_assembly_ids"] and any(x not in db["assemblies"] for x in features["core_assembly_ids"]):
+            raise InputValidationError("UNKNOWN_CORE_ASSEMBLY")
+        gap = features["gap"]
+        if gap["mode"] not in {"zero", "target", "search"}:
+            raise InputValidationError("UNKNOWN_GAP_MODE")
+        if gap["target_mode"] not in {"lm_min", "lm_target", "im_max"}:
+            raise InputValidationError("UNKNOWN_GAP_TARGET_MODE")
+        if gap["mode"] == "target" and gap["target_mode"] == "lm_target":
+            if gap["Lm_target_H"] is None or float(gap["Lm_target_H"]) <= 0:
+                raise InputValidationError("INVALID_LM_TARGET")
+        if gap["mode"] == "target" and gap["target_mode"] == "im_max":
+            if gap["Im_max_A"] is None or float(gap["Im_max_A"]) <= 0:
+                raise InputValidationError("INVALID_IM_MAX")
+        if features["external"]["mode"] not in {"integrated", "external_allowed"}:
+            raise InputValidationError("UNKNOWN_EXTERNAL_MODE")
+        if features["external"]["comparison_boundary"] not in {"transformer_only", "system"}:
+            raise InputValidationError("UNKNOWN_COMPARISON_BOUNDARY")
+        if features["external"]["mode"] == "external_allowed":
+            ids = features["external"]["external_inductor_ids"] or list(db["inductors"])
+            if any(x not in db["inductors"] for x in ids):
+                raise InputValidationError("UNKNOWN_EXTERNAL_INDUCTOR")
     if inp["design_rules"].get("rule_set_id") not in db["rules"]:
         raise InputValidationError("UNKNOWN_RULE_SET")
     if inp["cooling"].get("thermal_model_id") not in db["models"]:
         raise InputValidationError("UNKNOWN_THERMAL_MODEL")
     search = inp["search"]
-    if int(search.get("Np_min", 0)) < 1 or int(search.get("Np_max", 0)) < int(search["Np_min"]):
+    if int(search.get("Np_min", 0)) < 1 or int(search.get("Np_max", 0)) < int(search["Np_min"]) or int(search.get("Np_step", 0)) < 1:
         raise InputValidationError("INVALID_TURN_SEARCH")
     for op in inp["operating_points"]:
         for key in ("V1_dc_V", "V2_dc_V", "P_req_W", "fs_Hz"):
@@ -244,7 +334,7 @@ def candidate_id(genes: tuple[Any, ...]) -> str:
     return hashlib.sha256(str(genes).encode()).hexdigest()[:12]
 
 
-def evaluate_candidate(inp: dict[str, Any], db: dict[str, dict[str, Any]], genes: tuple[Any, ...], reference_mode: bool = False, fast: bool = False) -> dict[str, Any]:
+def evaluate_candidate_v10(inp: dict[str, Any], db: dict[str, dict[str, Any]], genes: tuple[Any, ...], reference_mode: bool = False, fast: bool = False) -> dict[str, Any]:
     if reference_mode:
         core_id, np_turns, primary_id, secondary_id, primary_parallel, secondary_parallel, insulation_layers = genes
         ns_turns = np_turns // 2
@@ -364,6 +454,299 @@ def evaluate_candidate(inp: dict[str, Any], db: dict[str, dict[str, Any]], genes
     }
 
 
+def _core_record(db: dict[str, dict[str, Any]], core_id: str) -> dict[str, Any]:
+    if core_id in db["cores"]:
+        core = dict(db["cores"][core_id])
+        core.setdefault("assembly_count", 1)
+        core.setdefault("structure", "single_core")
+        core.setdefault("equivalent_model_assumption", "单个虚构磁芯条目")
+        return core
+    if core_id in db["assemblies"]:
+        return db["assemblies"][core_id]
+    raise CandidateFailure("unknown_core")
+
+
+def _gap_selection(inp: dict[str, Any], core: dict[str, Any], material: dict[str, Any], np_turns: int, genes_gap_mm: float | None) -> dict[str, Any]:
+    features = v11_config(inp)
+    gap_cfg = features["gap"]
+    ae = core["Ae_mm2"] * 1e-6
+    reluctance_no_gap = core["le_mm"] * 0.001 / material["mu_e"]
+    lm_no_gap = MU0 * np_turns * np_turns * ae / reluctance_no_gap
+    g_min, g_max = core["equivalent_gap_range_mm"]
+    step = core["gap_step_mm"]
+    target_mode = gap_cfg["target_mode"]
+    if target_mode in {"lm_min", "lm_target"}:
+        required_lm = float(gap_cfg["Lm_target_H"] if target_mode == "lm_target" else inp["inductance"]["Lm_min_H"])
+    elif target_mode == "im_max":
+        required_lm = max(float(op["V1_dc_V"]) / (4 * float(op["fs_Hz"]) * float(gap_cfg["Im_max_A"])) for op in inp["operating_points"])
+    else:
+        required_lm = None
+    required_gap = 0.0
+    warnings: list[str] = []
+    if gap_cfg["mode"] == "zero":
+        selected = 0.0
+        status = "zero_gap"
+        if required_lm is not None and target_mode in {"lm_min", "im_max"} and lm_no_gap + 1e-12 < required_lm:
+            raise CandidateFailure("gap_out_of_manufacturing_range")
+        if required_lm is not None and target_mode == "lm_target" and required_lm > lm_no_gap + 1e-12:
+            raise CandidateFailure("negative_gap_recommended")
+    elif gap_cfg["mode"] == "search":
+        if genes_gap_mm is None:
+            raise CandidateFailure("gap_gene_missing")
+        selected = float(genes_gap_mm)
+        if selected < g_min - 1e-9 or selected > g_max + 1e-9:
+            raise CandidateFailure("gap_out_of_manufacturing_range")
+        if abs(selected / step - round(selected / step)) > 1e-8:
+            raise CandidateFailure("gap_not_quantized")
+        status = "manufacturing_search"
+    else:
+        required_gap = (MU0 * np_turns * np_turns * ae / required_lm - reluctance_no_gap) * 1000
+        if required_gap < -1e-9:
+            if target_mode == "lm_min":
+                selected, status = 0.0, "zero_gap_already_meets_minimum"
+            else:
+                raise CandidateFailure("negative_gap_recommended")
+        else:
+            selected = required_gap
+            if selected > g_max + 1e-9:
+                raise CandidateFailure("gap_out_of_manufacturing_range")
+            # For an Lm target, nearest quantization minimizes absolute error.
+            # For a lower-bound/current-limit target, ceil preserves the bound.
+            if target_mode in {"lm_min", "im_max"}:
+                selected = math.floor(selected / step + 1e-9) * step
+            else:
+                selected = round(selected / step) * step
+            selected = max(g_min, min(g_max, selected))
+            status = "target_quantized"
+            if abs(selected - required_gap) > step * 0.51:
+                warnings.append("gap_quantization_deviation_large")
+    gap_m = selected * 1e-3
+    lm = MU0 * np_turns * np_turns * ae / (reluctance_no_gap + gap_m)
+    if required_lm is not None and gap_cfg["target_mode"] in {"lm_min", "im_max"} and lm + 1e-12 < required_lm:
+        raise CandidateFailure("gap_quantization_violates_lm_constraint")
+    if required_lm is not None and gap_cfg["target_mode"] == "lm_target":
+        warnings.append("Lm_target_quantized")
+    return {
+        "gap_equivalent_mm": selected, "gap_required_mm": required_gap, "gap_quantization_error_mm": selected - required_gap,
+        "gap_range_mm": [g_min, g_max], "gap_step_mm": step, "gap_position": core.get("gap_position"),
+        "Lm_p_H": lm, "Lm_no_gap_H": lm_no_gap, "gap_status": status, "gap_warnings": warnings,
+    }
+
+
+def _psp_leakage_energy(p1: dict[str, Any], secondary: dict[str, Any], p2: dict[str, Any], dps: float, height: float) -> dict[str, Any]:
+    """Two-interface magnetic energy approximation for P1-S-P2.
+
+    Each zone integrates the square of the linearized ampere-turn density over
+    its radial width. The returned inductance is the sum of 2W/I^2 for the two
+    zones; no empirical interleaving factor is used.
+    """
+    zones = []
+    total_l = 0.0
+    for name, primary_block in (("P1-S", p1), ("S-P2", p2)):
+        width_m = (primary_block["thickness_mm"] / 3 + dps + secondary["thickness_mm"] / 3) * 1e-3
+        mlt_m = (primary_block["mean_turn_length_mm"] + secondary["mean_turn_length_mm"]) / 2000
+        l_zone = MU0 * primary_block["turns"] ** 2 * mlt_m / (height * 1e-3) * width_m
+        energy_per_amp2 = 0.5 * l_zone
+        zones.append({"interface": name, "radial_energy_width_mm": width_m * 1000, "L_zone_H": l_zone, "energy_per_A2_J": energy_per_amp2})
+        total_l += 2 * energy_per_amp2
+    return {"L_H": total_l, "zones": zones}
+
+
+def _aggregate_winding(blocks: list[dict[str, Any]], turns: int, connection_rdc: float = 0.0) -> dict[str, Any]:
+    if len(blocks) == 1:
+        value = dict(blocks[0])
+        value["blocks"] = blocks
+        value["connection_Rdc_20C_ohm"] = connection_rdc
+        return value
+    total_length = sum(x["branch_length_m"] for x in blocks)
+    total_rdc = sum(x["Rdc_20C_ohm"] for x in blocks) + connection_rdc
+    return {
+        "turns": turns, "layers": sum(x["layers"] for x in blocks), "turns_per_layer": sum((x["turns_per_layer"] for x in blocks), []),
+        "thickness_mm": sum(x["thickness_mm"] for x in blocks), "mean_turn_length_mm": sum(x["mean_turn_length_mm"] * x["turns"] for x in blocks) / turns,
+        "branch_length_m": total_length, "Rdc_20C_ohm": total_rdc, "Acu_mm2": min(x["Acu_mm2"] for x in blocks),
+        "parallel_bundles": blocks[0]["parallel_bundles"], "wire_id": blocks[0]["wire_id"],
+        "mass_kg": sum(x["mass_kg"] for x in blocks), "blocks": blocks, "connection_Rdc_20C_ohm": connection_rdc,
+    }
+
+
+def evaluate_candidate_v11(inp: dict[str, Any], db: dict[str, dict[str, Any]], genes: tuple[Any, ...], fast: bool = False) -> dict[str, Any]:
+    core_id, np_turns, ns_turns, primary_id, secondary_id, primary_parallel, secondary_parallel, insulation_layers, layout_id, external_id, *gap_gene = genes
+    features = v11_config(inp)
+    cores, materials, wires = db["cores"], db["materials"], db["wires"]
+    insulations, layouts, models, rules = db["insulation"], db["layouts"], db["models"], db["rules"]
+    core = _core_record(db, core_id)
+    material = materials[core["material_id"]]
+    layout = layouts[layout_id]
+    limits, inductance = inp["design_rules"], inp["inductance"]
+    nominal_ratio = inp["operating_points"][0]["V1_dc_V"] / inp["operating_points"][0]["V2_dc_V"]
+    ratio = np_turns / ns_turns
+    if abs(ratio / nominal_ratio - 1) > limits["turns_ratio_error_max"]:
+        raise CandidateFailure("turns_ratio")
+    rule = rules[limits["rule_set_id"]]
+    dps = insulation_layers * insulations[layout["main_insulation_id"]]["thickness_mm"]
+    if dps < rule["main_insulation_min_mm"]:
+        raise CandidateFailure("insulation_rule")
+    height = core["window_height_mm"] - 2 * core["end_margin_each_mm"]
+    layer_insulation = insulations[layout["layer_insulation_id"]]["thickness_mm"]
+    p1_turns = np_turns // 2
+    p2_turns = np_turns - p1_turns
+    is_psp = layout_id == "DEMO_LAYOUT_PSP_V1_1"
+    if is_psp:
+        p1 = winding(p1_turns, wires[primary_id], primary_parallel, height, layer_insulation, layout["process_clearance_mm"], core["bobbin_wall_mm"], core)
+        secondary = winding(ns_turns, wires[secondary_id], secondary_parallel, height, layer_insulation, layout["process_clearance_mm"], core["bobbin_wall_mm"] + p1["thickness_mm"] + dps, core)
+        p2 = winding(p2_turns, wires[primary_id], primary_parallel, height, layer_insulation, layout["process_clearance_mm"], core["bobbin_wall_mm"] + p1["thickness_mm"] + dps + secondary["thickness_mm"] + dps, core)
+        connection_rdc = 0.00008 + 0.000002 * np_turns
+        primary = _aggregate_winding([p1, p2], np_turns, connection_rdc)
+        radial = core["bobbin_wall_mm"] + p1["thickness_mm"] + dps + secondary["thickness_mm"] + dps + p2["thickness_mm"] + core["radial_margin_mm"]
+        if radial > core["window_width_mm"]:
+            raise CandidateFailure("geometry_window_width")
+        leakage_detail = _psp_leakage_energy(p1, secondary, p2, dps, height)
+        lleak = leakage_detail["L_H"]
+    else:
+        primary = winding(np_turns, wires[primary_id], primary_parallel, height, layer_insulation, layout["process_clearance_mm"], core["bobbin_wall_mm"], core)
+        secondary = winding(ns_turns, wires[secondary_id], secondary_parallel, height, layer_insulation, layout["process_clearance_mm"], core["bobbin_wall_mm"] + primary["thickness_mm"] + dps, core)
+        primary["blocks"] = [primary]
+        primary["connection_Rdc_20C_ohm"] = 0.0
+        radial = core["bobbin_wall_mm"] + primary["thickness_mm"] + dps + secondary["thickness_mm"] + core["radial_margin_mm"]
+        if radial > core["window_width_mm"]:
+            raise CandidateFailure("geometry_window_width")
+        mlt = (primary["mean_turn_length_mm"] + secondary["mean_turn_length_mm"]) / 2000
+        lleak = MU0 * np_turns * np_turns * mlt / (height * 0.001) * ((primary["thickness_mm"] + secondary["thickness_mm"]) / 3 + dps) * 0.001
+        leakage_detail = {"method": "DEMO_PS_1D", "L_H": lleak}
+    gap = _gap_selection(inp, core, material, np_turns, gap_gene[0] if gap_gene else None)
+    external_mode = features["external"]["mode"]
+    if inp["inductance"].get("leakage_mode") == "integrated" or external_mode == "integrated":
+        if abs(lleak / inductance["L_series_target_H"] - 1) > inductance["relative_tolerance"]:
+            raise CandidateFailure("leakage_tolerance")
+        external = db["inductors"]["DEMO_EXT_L_0"]
+    else:
+        external = db["inductors"].get(external_id or "DEMO_EXT_L_0")
+        if external is None:
+            raise CandidateFailure("unknown_external_inductor")
+    l_ext_p = external["L_H"] if external["installed_side"] == "primary" else external["L_H"] * ratio * ratio
+    lseries = lleak + l_ext_p
+    if lseries > inductance["L_series_target_H"] * (1 + inductance["relative_tolerance"]):
+        raise CandidateFailure("leakage_exceeds_target_no_negative_external")
+    if abs(lseries / inductance["L_series_target_H"] - 1) > inductance["relative_tolerance"]:
+        raise CandidateFailure("leakage_tolerance")
+    thermal = models[inp["cooling"]["thermal_model_id"]]
+    gc, gw, gx = 1 / thermal["Rca_K_W"], 1 / thermal["Rwa_K_W"], 1 / thermal["Rcw_K_W"]
+    determinant = (gc + gx) * (gw + gx) - gx * gx
+    ae = core["Ae_mm2"] * 1e-6
+    points = []
+    external_points = []
+    for op in inp["operating_points"]:
+        f = op["fs_Hz"]
+        bpk = op["V1_dc_V"] / (4 * f * np_turns * ae)
+        valid = material["valid_range"]
+        if not (valid["f_Hz"][0] <= f <= valid["f_Hz"][1] and valid["Bpk_T"][0] <= bpk <= valid["Bpk_T"][1]):
+            raise CandidateFailure("core_model_range")
+        duty, segments, transfer_rms, primary_rms = sps_segments(op["V1_dc_V"], ratio * op["V2_dc_V"], f, lseries, op["P_req_W"], gap["Lm_p_H"])
+        secondary_rms = ratio * transfer_rms
+        primary_area = p1["Acu_mm2"] if is_psp else primary["Acu_mm2"]
+        if primary_rms / primary_area > limits["Jp_max_A_per_mm2"]:
+            raise CandidateFailure("current_density")
+        if secondary_rms / secondary["Acu_mm2"] > limits["Js_max_A_per_mm2"]:
+            raise CandidateFailure("current_density")
+        samples = 128 if fast else 512
+        harmonic_count = 32 if fast else 128
+        spectrum = sampled_spectrum(segments, f, ratio, samples, harmonic_count)
+        fr_model = models["DEMO_FR_EMPIRICAL"]
+
+        def fr(freq: float, winding_data: dict[str, Any]) -> float:
+            return max(1, fr_model["base_Fr"] * (freq / 20000) ** fr_model["frequency_exponent"] + fr_model["additional_Fr_per_extra_layer"] * (winding_data["layers"] - 1))
+
+        wp = sum(a * fr(h * f, primary) for h, a, _ in spectrum)
+        ws = sum(b * fr(h * f, secondary) for h, _, b in spectrum)
+        covered_p, covered_s = sum(a for _, a, _ in spectrum), sum(b for _, _, b in spectrum)
+        tail_p, tail_s = max(0, primary_rms**2 - covered_p), max(0, secondary_rms**2 - covered_s)
+        wp += tail_p * fr((harmonic_count + 1) * f, primary)
+        ws += tail_s * fr((harmonic_count + 1) * f, secondary)
+        tc = tw = op["T_amb_C"]
+        param = material["loss_parameters"]
+        last_total = None
+        iterations = 0
+        for iterations in range(1, 51):
+            if not valid["T_C"][0] <= tc <= valid["T_C"][1]:
+                raise CandidateFailure("material_temperature_range")
+            pcore = param["ki"] * (4 * f * bpk) ** param["alpha"] * (2 * bpk) ** (param["beta"] - param["alpha"]) * core["Ve_mm3"] * 1e-9
+            pcore *= 1 + param["temperature_coefficient_per_K"] * (tc - param["reference_temperature_C"])
+            rtemp = 1 + 0.00393 * (tw - 20)
+            pcu_p = wp * primary["Rdc_20C_ohm"] * rtemp
+            pcu_s = ws * secondary["Rdc_20C_ohm"] * rtemp
+            copper = pcu_p + pcu_s
+            next_tc = op["T_amb_C"] + (pcore * (gw + gx) + copper * gx) / determinant
+            next_tw = op["T_amb_C"] + (copper * (gc + gx) + pcore * gx) / determinant
+            total = pcore + copper
+            if max(abs(next_tc - tc), abs(next_tw - tw)) < 0.05 and last_total is not None and abs(total - last_total) / max(total, 1e-12) < 0.001:
+                tc, tw = next_tc, next_tw
+                break
+            tc, tw, last_total = (tc + next_tc) / 2, (tw + next_tw) / 2, total
+        else:
+            raise CandidateFailure("thermal_not_converged")
+        if bpk > interpolate(material["Bsat_vs_T"], tc, "Bsat_T") * material["B_derating"]:
+            raise CandidateFailure("flux_limit")
+        external_current = primary_rms if external["installed_side"] == "primary" else secondary_rms
+        pext = external_current * external_current * external["Rdc_ohm"]
+        ext_model = models[external["thermal_model_id"]]
+        text = op["T_amb_C"] + pext * ext_model["Rth_K_W"]
+        if tw > limits["Tw_max_C"] or tc > limits["Tc_max_C"] or tw - op["T_amb_C"] > limits["deltaT_w_max_K"]:
+            raise CandidateFailure("temperature_limit")
+        if text > external["max_temperature_C"]:
+            raise CandidateFailure("external_temperature_limit")
+        system_total = total + pext
+        point = {
+            "point_id": op["id"], "phase_D": duty, "phase_rad": duty * math.pi, "Bpk_T": bpk,
+            "Ip_rms_A": primary_rms, "Is_rms_A": secondary_rms, "Jp_A_mm2": primary_rms / (p1["Acu_mm2"] if is_psp else primary["Acu_mm2"]), "Js_A_mm2": secondary_rms / secondary["Acu_mm2"],
+            "Pcore_W": pcore, "Pcu_p_W": pcu_p, "Pcu_s_W": pcu_s, "Pext_W": pext, "Ptotal_W": total, "Psystem_total_W": system_total,
+            "Tc_est_C": tc, "Tw_est_C": tw, "Text_est_C": text, "deltaT_w_K": tw - op["T_amb_C"], "Thotspot_est_C": None,
+            "spectrum_tail_current_energy_fraction_p": tail_p / max(primary_rms**2, 1e-12), "thermal_iterations": iterations,
+        }
+        points.append(point)
+        external_points.append({"point_id": op["id"], "current_A": external_current, "loss_W": pext, "temperature_C": text})
+    epsilon_r = insulations[layout["main_insulation_id"]]["epsilon_r"]
+    if is_psp:
+        overlap_1 = (p1["mean_turn_length_mm"] + secondary["mean_turn_length_mm"]) / 2000 * height
+        overlap_2 = (p2["mean_turn_length_mm"] + secondary["mean_turn_length_mm"]) / 2000 * height
+        interface_caps = [EPS0 * epsilon_r * overlap_1 / (dps * 0.001), EPS0 * epsilon_r * overlap_2 / (dps * 0.001)]
+    else:
+        overlap = (primary["mean_turn_length_mm"] + secondary["mean_turn_length_mm"]) / 2000 * height
+        interface_caps = [EPS0 * epsilon_r * overlap / (dps * 0.001)]
+    transformer_volume = math.prod(core["core_outer_mm"]) * 1e-6
+    total_volume = transformer_volume + external["volume_L"]
+    transformer_mass = core["mass_kg"] + primary["mass_kg"] + secondary["mass_kg"] + 0.2
+    total_mass = transformer_mass + external["mass_kg"]
+    if transformer_volume > limits["volume_max_L"] or (features["external"]["comparison_boundary"] == "system" and total_volume > limits["volume_max_L"]):
+        raise CandidateFailure("volume_max")
+    if transformer_mass > limits["mass_max_kg"] or (features["external"]["comparison_boundary"] == "system" and total_mass > limits["mass_max_kg"]):
+        raise CandidateFailure("mass_max")
+    system_boundary = features["external"]["comparison_boundary"] == "system"
+    objective_loss = max(x["Psystem_total_W"] if system_boundary else x["Ptotal_W"] for x in points)
+    objective_volume = total_volume if system_boundary else transformer_volume
+    return {
+        "candidate_id": candidate_id(genes), "result_grade": "demo_only", "data_status": "synthetic", "core_id": core_id,
+        "core_kind": core.get("record_type", "core"), "core_assembly_count": core.get("assembly_count", 1), "core_structure": core.get("structure"), "core_material_id": material["id"], "material_id": material["id"],
+        "layout_id": layout_id, "Np": np_turns, "Ns": ns_turns, "n": ratio, "dps_mm": dps,
+        "primary": primary, "primary_blocks": [p1, p2] if is_psp else [primary], "secondary": secondary,
+        "Lm_p_H": gap["Lm_p_H"], "Lm_no_gap_H": gap["Lm_no_gap_H"], "gap_equivalent_mm": gap["gap_equivalent_mm"], "gap_required_mm": gap["gap_required_mm"], "gap_quantization_error_mm": gap["gap_quantization_error_mm"], "gap_range_mm": gap["gap_range_mm"], "gap_step_mm": gap["gap_step_mm"], "gap_position": gap["gap_position"], "gap_status": gap["gap_status"],
+        "Lleak_p_H": lleak, "Lseries_p_H": lseries, "Lext_p_H": l_ext_p, "external_inductor_id": external["id"], "external_inductor": external, "external_points": external_points,
+        "volume_envelope_L": transformer_volume, "volume_total_L": total_volume, "mass_kg": transformer_mass, "mass_total_kg": total_mass,
+        "Cps_estimate_F": None if is_psp else interface_caps[0], "Cps_interface_estimates_F": interface_caps,
+        "hotspot_status": "not_available", "insulation_status": "demo_rule_check_only", "points": points,
+        "objectives": [objective_loss, objective_volume], "comparison_boundary": features["external"]["comparison_boundary"],
+        "leakage_detail": leakage_detail, "geometry": {"window_height_mm": core["window_height_mm"], "window_width_mm": core["window_width_mm"], "radial_used_mm": radial, "radial_margin_mm": core["window_width_mm"] - radial, "core_outer_mm": core["core_outer_mm"], "core_equivalent_model_assumption": core.get("equivalent_model_assumption")},
+        "layout_blocks": {"order": ["P1", "S", "P2"] if is_psp else ["P", "S"], "primary_turns": [p1_turns, p2_turns] if is_psp else [np_turns], "interface_insulation_mm": [dps, dps] if is_psp else [dps]},
+        "model_warnings": ["All values are fictional; no engineering qualification", "No air-gap fringing loss model is implemented; gap loss is omitted", "Shared synthetic thermal network; no hotspot or dielectric qualification", "External inductor is one discrete device shared by all operating points" if external["L_H"] > 0 else "External inductor path is bypassed", "P-S-P capacitance values are interface estimates and are not summed as a port equivalent" if is_psp else "" ] + gap["gap_warnings"],
+    }
+
+
+def evaluate_candidate(inp: dict[str, Any], db: dict[str, dict[str, Any]], genes: tuple[Any, ...], reference_mode: bool = False, fast: bool = False) -> dict[str, Any]:
+    """Single dispatch point shared by enumeration, NSGA-II and UI evaluation."""
+    if reference_mode or not v11_config(inp)["enabled"]:
+        return evaluate_candidate_v10(inp, db, genes, reference_mode=reference_mode, fast=fast)
+    return evaluate_candidate_v11(inp, db, genes, fast=fast)
+
+
 def pareto_front(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
     front, seen = [], set()
     for candidate in sorted(candidates, key=lambda x: tuple(x["objectives"])):
@@ -380,6 +763,8 @@ def pareto_front(candidates: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def reference_enumeration(inp: dict[str, Any], progress: Callable[[dict[str, Any]], None] | None = None, cancelled: Callable[[], bool] | None = None) -> dict[str, Any]:
     db = load_database()
     validate_input(inp, db)
+    if v11_config(inp)["enabled"]:
+        raise InputValidationError("REFERENCE_MODE_V1_0_ONLY")
     search = inp["search"]
     choices = itertools.product(
         db["cores"], range(search["Np_min"], search["Np_max"] + 1, search["Np_step"]),
@@ -404,6 +789,7 @@ def reference_enumeration(inp: dict[str, Any], progress: Callable[[dict[str, Any
 
 def candidate_catalog(inp: dict[str, Any], db: dict[str, dict[str, Any]]) -> list[tuple[Any, ...]]:
     search = inp["search"]
+    features = v11_config(inp)
     ratio = inp["operating_points"][0]["V1_dc_V"] / inp["operating_points"][0]["V2_dc_V"]
     ratio_error = inp["design_rules"]["turns_ratio_error_max"]
     ns_map: dict[int, list[int]] = {}
@@ -412,12 +798,38 @@ def candidate_catalog(inp: dict[str, Any], db: dict[str, dict[str, Any]]) -> lis
         high = max(low, math.ceil(np_turns / (ratio * (1 - ratio_error))))
         ns_map[np_turns] = list(range(low, high + 1))
     catalog = []
-    for core_id, np_turns, ns_turns, primary_id, secondary_id, pp, ps, nins in itertools.product(
-        db["cores"], ns_map.keys(), range(1), db["wires"], db["wires"], range(1, search["parallel_bundles_max"] + 1), range(1, search["parallel_bundles_max"] + 1), db["layouts"]["DEMO_LAYOUT_PS"]["main_insulation_layers_choices"]
+    if not features["enabled"]:
+        for core_id, np_turns, ns_turns, primary_id, secondary_id, pp, ps, nins in itertools.product(
+            db["cores"], ns_map.keys(), range(1), db["wires"], db["wires"], range(1, search["parallel_bundles_max"] + 1), range(1, search["parallel_bundles_max"] + 1), db["layouts"]["DEMO_LAYOUT_PS"]["main_insulation_layers_choices"]
+        ):
+            # Keep the V1.0 catalog ordering and cardinality unchanged.
+            for ns_turns_value in ns_map[np_turns]:
+                catalog.append((core_id, np_turns, ns_turns_value, primary_id, secondary_id, pp, ps, nins))
+        return catalog
+    if features["core_mode"] == "single":
+        core_ids = list(db["cores"])
+    elif features["core_mode"] == "combination":
+        core_ids = features["core_assembly_ids"] or list(db["assemblies"])
+    else:
+        core_ids = list(db["cores"]) + (features["core_assembly_ids"] or list(db["assemblies"]))
+    layout_ids = ["DEMO_LAYOUT_PSP_V1_1"] if features["layout_mode"] == "PSP" else ["DEMO_LAYOUT_PS"]
+    ext_ids = ["DEMO_EXT_L_0"]
+    if features["external"]["mode"] == "external_allowed":
+        ext_ids = features["external"]["external_inductor_ids"] or list(db["inductors"])
+    for core_id, np_turns, primary_id, secondary_id, pp, ps, layout_id, external_id in itertools.product(
+        core_ids, ns_map.keys(), db["wires"], db["wires"], range(1, search["parallel_bundles_max"] + 1), range(1, search["parallel_bundles_max"] + 1), layout_ids, ext_ids
     ):
-        # expand Ns explicitly; the range(1) slot keeps the product readable and deterministic.
-        for ns_turns_value in ns_map[np_turns]:
-            catalog.append((core_id, np_turns, ns_turns_value, primary_id, secondary_id, pp, ps, nins))
+        core = _core_record(db, core_id)
+        if layout_id not in core.get("allowed_layout_ids", []):
+            continue
+        nins_choices = db["layouts"][layout_id]["main_insulation_layers_choices"]
+        gap_cfg = features["gap"]
+        if gap_cfg["mode"] == "search":
+            gap_values = gap_cfg["candidate_values_mm"] or [round(i * core["gap_step_mm"], 8) for i in range(round(core["equivalent_gap_range_mm"][1] / core["gap_step_mm"]) + 1)]
+        else:
+            gap_values = [None]
+        for ns_turns_value, nins, gap_value in itertools.product(ns_map[np_turns], nins_choices, gap_values):
+            catalog.append((core_id, np_turns, ns_turns_value, primary_id, secondary_id, pp, ps, nins, layout_id, external_id, gap_value))
     return catalog
 
 
@@ -504,14 +916,15 @@ def nsga2_optimization(inp: dict[str, Any], progress: Callable[[dict[str, Any]],
 
 
 def build_result(inp: dict[str, Any], optimizer: str, candidate_count: int, feasible: list[dict[str, Any]], front: list[dict[str, Any]], failures: Counter, start: float, snapshot: dict[str, Any], extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    features = v11_config(inp)
     data = {
         "status": "completed" if front else "no_feasible_solution", "data_mode": inp.get("data_mode"),
         "pipeline": "data_checks/integer_candidates/packing/inductance/SPS_current/loss/thermal/constraints/Pareto/export",
         "optimizer": optimizer, "candidate_count": candidate_count, "feasible_count": len(feasible), "pareto_count": len(front),
-        "failure_counts": dict(failures), "pareto": front, "data_snapshot": snapshot, "model_version": MODEL_VERSION,
-        "engine_version": ENGINE_VERSION, "input_schema_version": inp.get("schema_version", "1.4"), "normalized_schema_version": "1.5",
+        "failure_counts": dict(failures), "pareto": front, "data_snapshot": snapshot, "model_version": MODEL_VERSION + ("+v1.1" if features["enabled"] else ""),
+        "engine_version": ENGINE_VERSION, "input_schema_version": inp.get("schema_version", "1.4"), "normalized_schema_version": "1.5-v1.1" if features["enabled"] else "1.5",
         "seed": inp["search"].get("seed"), "elapsed_s": round(time.perf_counter() - start, 3), "result_grade": "demo_only",
-        "diagnostics": diagnostic_payload(inp, failures, feasible, front),
+        "v1_1": features, "diagnostics": diagnostic_payload(inp, failures, feasible, front),
     }
     if extra:
         data.update(extra)
@@ -528,6 +941,11 @@ def diagnostic_payload(inp: dict[str, Any], failures: Counter, feasible: list[di
         "turns_ratio": "搜索范围内没有满足电压比例公差的整数 Np/Ns 组合。",
         "power_unreachable": "目标功率超过候选实际串联电感下的 SPS 可传输能力。",
         "temperature_limit": "节点温度超过限制，请检查冷却热阻、损耗和温度上限。",
+        "gap_out_of_manufacturing_range": "目标励磁条件所需气隙超出磁芯制造范围，未自动放宽气隙约束。",
+        "negative_gap_recommended": "目标对应的理论气隙为负值，物理上不可通过气隙达到；请调整励磁目标或匝数。",
+        "gap_quantization_violates_lm_constraint": "气隙离散步进量化后不能满足励磁电感/励磁电流约束。",
+        "leakage_exceeds_target_no_negative_external": "变压器自身漏感已超过串联电感目标上限，不能用负外置电感补偿。",
+        "external_temperature_limit": "外置电感独立温度模型超过器件限制。",
     }
     # A volume cap below the smallest demo assembly is a direct user-facing
     # cause, even when earlier geometry checks also reject many candidates.
@@ -537,15 +955,18 @@ def diagnostic_payload(inp: dict[str, Any], failures: Counter, feasible: list[di
         reason = "temperature_limit"
     else:
         reason = failures.most_common(1)[0][0] if failures else "unknown"
-    return {"message": "没有可行方案，未生成伪推荐。", "primary_reason": reason, "suggestion": suggestions.get(reason, "请查看失败原因统计并调整受限输入。"), "top_failure_reasons": failures.most_common(8)}
+    suggestion = suggestions.get(reason, "请查看失败原因统计并调整受限输入。")
+    if reason == "turns_ratio" and int(inp["search"].get("Np_step", 1)) > 1:
+        suggestion += f" 当前 Np 步长为 {inp['search']['Np_step']}，修改电压比例后建议将 Np 步长改为 1，以免跳过满足整数 Np/Ns 变比的候选；系统不会自动放宽该搜索设置。"
+    return {"message": "没有可行方案，未生成伪推荐。", "primary_reason": reason, "suggestion": suggestion, "top_failure_reasons": failures.most_common(8)}
 
 
 def export_csv(result: dict[str, Any]) -> str:
-    fields = ["candidate_id", "core_id", "Np", "Ns", "dps_mm", "Lleak_uH", "volume_L", "Ptotal_W", "Tw_C"]
+    fields = ["candidate_id", "core_id", "layout_id", "Np", "Ns", "dps_mm", "gap_mm", "Lm_mH", "Lleak_uH", "Lext_uH", "Lseries_uH", "volume_L", "volume_total_L", "Ptotal_W", "Psystem_total_W", "Tw_C", "Text_C"]
     rows = []
     for candidate in result.get("pareto", []):
         point = candidate["points"][0]
-        rows.append({"candidate_id": candidate["candidate_id"], "core_id": candidate["core_id"], "Np": candidate["Np"], "Ns": candidate["Ns"], "dps_mm": candidate["dps_mm"], "Lleak_uH": candidate["Lleak_p_H"] * 1e6, "volume_L": candidate["volume_envelope_L"], "Ptotal_W": point["Ptotal_W"], "Tw_C": point["Tw_est_C"]})
+        rows.append({"candidate_id": candidate["candidate_id"], "core_id": candidate["core_id"], "layout_id": candidate.get("layout_id"), "Np": candidate["Np"], "Ns": candidate["Ns"], "dps_mm": candidate["dps_mm"], "gap_mm": candidate.get("gap_equivalent_mm"), "Lm_mH": candidate.get("Lm_p_H", 0) * 1e3, "Lleak_uH": candidate["Lleak_p_H"] * 1e6, "Lext_uH": candidate.get("Lext_p_H", 0) * 1e6, "Lseries_uH": candidate.get("Lseries_p_H", candidate["Lleak_p_H"]) * 1e6, "volume_L": candidate["volume_envelope_L"], "volume_total_L": candidate.get("volume_total_L", candidate["volume_envelope_L"]), "Ptotal_W": point["Ptotal_W"], "Psystem_total_W": point.get("Psystem_total_W", point["Ptotal_W"]), "Tw_C": point["Tw_est_C"], "Text_C": point.get("Text_est_C")})
     out = []
     with __import__("io").StringIO() as stream:
         writer = csv.DictWriter(stream, fieldnames=fields)
@@ -560,11 +981,14 @@ def export_report(result: dict[str, Any], inp: dict[str, Any]) -> str:
         "> 虚构数据演示，不用于工程选型；所有结果持续保留 `demo_only` / `synthetic` 标识。", "",
         f"- 项目：{inp.get('project_name')}  ", f"- 优化器：{result.get('optimizer')}  ",
         f"- 状态：{result.get('status')}  ", f"- 候选：{result.get('candidate_count')}；可行：{result.get('feasible_count')}；Pareto：{result.get('pareto_count')}  ",
-        f"- 数据版本：{result.get('data_snapshot', {}).get('data_version')}；模型版本：{result.get('model_version')}；随机种子：{result.get('seed')}", "",
-        "## Pareto 方案", "", "| 方案 | 磁芯 | Np/Ns | 漏感 μH | 损耗 W | 体积 L | 绕组节点 ℃ |", "|---|---|---:|---:|---:|---:|---:|",
+        f"- 数据版本：{result.get('data_snapshot', {}).get('data_version')}；模型版本：{result.get('model_version')}；随机种子：{result.get('seed')}",
+        f"- V1.1 配置：{result.get('v1_1', {}).get('enabled', False)}；比较边界：{result.get('v1_1', {}).get('external', {}).get('comparison_boundary', 'transformer_only')}", "",
+        "## Pareto 方案", "", "| 方案 | 磁芯/排布 | Np/Ns | 气隙 mm | 漏感+外置 μH | 比较损耗 W | 比较体积 L | 绕组节点 ℃ |", "|---|---|---:|---:|---:|---:|---:|---:|",
     ]
     for candidate in result.get("pareto", []):
         point = candidate["points"][0]
-        lines.append(f"| {candidate['candidate_id']} | {candidate['core_id']} | {candidate['Np']}/{candidate['Ns']} | {candidate['Lleak_p_H']*1e6:.2f} | {point['Ptotal_W']:.1f} | {candidate['volume_envelope_L']:.3f} | {point['Tw_est_C']:.1f} |")
-    lines += ["", "## 约束与待验证项", "", "- 演示模型使用合成 Fr、磁芯损耗和双节点热阻；不得解释为已标定工程模型。", "- `Thotspot_est_C` 为 `null`，因为数据包未提供热点修正模型。", "- 外部验证状态：`not_configured`。", "", "## 无解诊断", "", str(result.get("diagnostics", {}))]
+        loss = point.get("Psystem_total_W", point["Ptotal_W"]) if candidate.get("comparison_boundary") == "system" else point["Ptotal_W"]
+        volume = candidate.get("volume_total_L", candidate["volume_envelope_L"]) if candidate.get("comparison_boundary") == "system" else candidate["volume_envelope_L"]
+        lines.append(f"| {candidate['candidate_id']} | {candidate['core_id']} / {candidate.get('layout_id')} | {candidate['Np']}/{candidate['Ns']} | {candidate.get('gap_equivalent_mm', 0):.2f} | {candidate['Lleak_p_H']*1e6:.2f}+{candidate.get('Lext_p_H', 0)*1e6:.2f} | {loss:.1f} | {volume:.3f} | {point['Tw_est_C']:.1f} |")
+    lines += ["", "## 约束与待验证项", "", "- 演示模型使用合成 Fr、磁芯损耗和双节点热阻；不得解释为已标定工程模型。", "- `Thotspot_est_C` 为 `null`，因为数据包未提供热点修正模型。", "- 非零气隙未计算气隙边缘磁通附加损耗。", "- P-S-P 的两个界面电容仅为界面估算，无端口等效网络时不相加。", "- 外部验证状态：`not_configured`。", "", "## 无解诊断", "", str(result.get("diagnostics", {}))]
     return "\n".join(lines) + "\n"

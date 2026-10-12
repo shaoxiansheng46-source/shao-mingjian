@@ -1,0 +1,38 @@
+[
+  {
+    "id": "DEMO_GAP_UNIFORM_RELUCTANCE_V1_1",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "model_type": "magnetic_gap",
+    "description": "等效气隙采用均匀磁阻近似，未计算气隙边缘磁通附加损耗。"
+  },
+  {
+    "id": "DEMO_PSP_LEAKAGE_ENERGY_V1_1",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "model_type": "leakage_energy_zone",
+    "description": "P1-S 与 S-P2 两个分区按磁场能量积分近似求和，不使用交错改善系数。"
+  },
+  {
+    "id": "DEMO_PSP_INTERFACE_CAP_V1_1",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "model_type": "interface_capacitance",
+    "description": "分别估算 P1-S、S-P2 界面电容；无端口等效网络时不将两者宣称为端口电容。"
+  },
+  {
+    "id": "DEMO_EXT_LUMPED_V1_1",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "model_type": "external_inductor",
+    "description": "离散外置电感采用单个全工况器件，按安装侧电流计算铜损。"
+  },
+  {
+    "id": "DEMO_EXT_THERMAL_001",
+    "data_status": "synthetic",
+    "demo_only": true,
+    "model_type": "external_thermal",
+    "Rth_K_W": 0.25,
+    "description": "外置电感独立一阶热阻模型。"
+  }
+]

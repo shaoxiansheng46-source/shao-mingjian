@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.5-v1.1",
+  "data_mode": "demo",
+  "project_name": "synthetic_v1_1_combined_case",
+  "topology": "DAB_SPS",
+  "current_mode": "system_sps",
+  "bridge_duty": 0.5,
+  "operating_points": [
+    {"id": "rated", "V1_dc_V": 800, "V2_dc_V": 400, "P_req_W": 100000, "fs_Hz": 20000, "T_amb_C": 40}
+  ],
+  "inductance": {
+    "reference_side": "primary",
+    "leakage_mode": "external_allowed",
+    "L_series_target_H": 0.00003,
+    "relative_tolerance": 0.2,
+    "Lm_min_H": 0.0005
+  },
+  "design_rules": {
+    "rule_set_id": "DEMO_RULES_001",
+    "insulation_rule_id": "DEMO_INS_001",
+    "Jp_max_A_per_mm2": 3,
+    "Js_max_A_per_mm2": 3,
+    "turns_ratio_error_max": 0.02,
+    "deltaT_w_max_K": 60,
+    "Tw_max_C": 110,
+    "Tc_max_C": 110,
+    "volume_max_L": 8,
+    "mass_max_kg": 30
+  },
+  "cooling": {"mode": "forced_air", "thermal_model_id": "DEMO_THERMAL_001"},
+  "search": {
+    "allowed_layouts": ["DEMO_LAYOUT_PSP_V1_1"],
+    "Np_min": 10,
+    "Np_max": 16,
+    "Np_step": 1,
+    "parallel_bundles_max": 2,
+    "core_assembly_max": 2,
+    "population": 18,
+    "generations": 5,
+    "seed": 20261012
+  },
+  "v1_1": {
+    "enabled": true,
+    "layout_mode": "PSP",
+    "core_mode": "combination",
+    "core_assembly_ids": ["DEMO_CORE_SET2_XL"],
+    "gap": {"mode": "target", "target_mode": "lm_target", "Lm_target_H": 0.003},
+    "external": {
+      "mode": "external_allowed",
+      "external_inductor_ids": ["DEMO_EXT_L_10UH"],
+      "comparison_boundary": "system"
+    }
+  }
+}
