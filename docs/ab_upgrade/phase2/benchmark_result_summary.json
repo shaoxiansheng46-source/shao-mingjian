@@ -1,0 +1,46 @@
+{
+  "status": "passed",
+  "provider": "PyOpenMagnetics 1.7.35",
+  "mkf_commit": "39b59172268f55fbcd72037b948622f21382b5c1",
+  "mas_commit": "0a7ba58f542049fd073041b3b5e4bac431ed6292",
+  "database_counts": {
+    "core_materials": 1073,
+    "core_shapes": 2107,
+    "wires": 4340
+  },
+  "selected_records": {
+    "material": "3C95",
+    "core_shape": "ETD 54/28/19",
+    "wire": "Round 0.5 - Grade 1"
+  },
+  "actual_metrics": {
+    "effective_area_m2": 0.0002799884090461257,
+    "effective_length_m": 0.12937894574793482,
+    "effective_volume_m3": 3.622460518402928e-05,
+    "magnetizing_inductance_h": 0.0009703195771705127,
+    "core_losses_w": 0.21293404491359452,
+    "winding_losses_w": 0.04785233148346702,
+    "ohmic_losses_w": 0.04453555479945645
+  },
+  "gap_solver": {
+    "called": true,
+    "status": "error",
+    "error": "GAP_SOLVER_FAILED: Bad optional access",
+    "handled_without_zero_fallback": true
+  },
+  "checks": [
+    "database_counts",
+    "mas_unit_conversion",
+    "missing_waveform_diagnostic",
+    "standalone_ac_loss_input_diagnostic",
+    "turns_vs_inductance",
+    "gap_vs_inductance",
+    "current_vs_ohmic_loss",
+    "frequency_call_changes_core_loss",
+    "repeatability",
+    "invalid_lookup_diagnostic",
+    "invalid_core_diagnostic",
+    "invalid_winding_diagnostic",
+    "unsupported_model_diagnostic"
+  ]
+}

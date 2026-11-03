@@ -1,0 +1,52 @@
+{
+  "benchmark": "phase4b_real_litz_wire",
+  "status": "passed",
+  "runtime": {
+    "third_party_package": "PyOpenMagnetics",
+    "third_party_version": "1.7.35",
+    "mkf_commit": "39b59172268f55fbcd72037b948622f21382b5c1",
+    "mas_commit": "0a7ba58f542049fd073041b3b5e4bac431ed6292",
+    "database_counts": {"core_materials": 1073, "core_shapes": 2107, "wires": 4340}
+  },
+  "litz_wire": {
+    "model": "Litz 1000x0.02 - Grade 1 - Double Served",
+    "manufacturer": "Elektrisola",
+    "number_strands": 1000,
+    "strand_bare_diameter_m": 0.00002,
+    "finished_outer_diameter_m": null,
+    "finished_outer_diameter_range_m": [0.00094, 0.0010509999999999999],
+    "twist_pitch_m": null,
+    "missing_parameters": ["finished_outer_diameter_nominal", "twist_pitch_m"],
+    "geometry_policy": "database_maximum",
+    "data_status": "external_database",
+    "synthetic": false,
+    "demo_only": false,
+    "engineering_approved": false
+  },
+  "wire_api": {
+    "dc_resistance_per_m_ohm": 0.0544915964214477,
+    "skin_ac_resistance_per_m_ohm": 0.0544923654873939
+  },
+  "cases": {
+    "PS": {
+      "native_dc_w": 0.0311221887019918,
+      "openmagnetics_full_w": 0.023562997199914,
+      "ohmic_w": 0.023561479698516,
+      "skin_w": 0.000000203425941039377,
+      "proximity_w": 0.00000131407545698134,
+      "status": "ok",
+      "primary_blocks": ["Primary"]
+    },
+    "PSP": {
+      "native_dc_w": 0.0329348625552697,
+      "openmagnetics_full_w": 0.0245996269581473,
+      "ohmic_w": 0.0245976483027882,
+      "skin_w": 0.000000218049883818373,
+      "proximity_w": 0.00000176060547521484,
+      "status": "ok",
+      "primary_blocks": ["P1", "P2"]
+    }
+  },
+  "source_script": "examples/phase4b_litz_benchmark.py",
+  "generated_from": ".runtime/phase4b-litz/benchmark.json"
+}
