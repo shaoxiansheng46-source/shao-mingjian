@@ -1,0 +1,55 @@
+{
+  "data_source": "external_database",
+  "fixed": {
+    "core": {
+      "shape_name": "ETD 54/28/19",
+      "material_name": "3C95",
+      "bobbin_name": "Bobbin ETD 54"
+    },
+    "wire": {
+      "primary_name": "Litz 1000x0.02 - Grade 1 - Double Served",
+      "secondary_name": "Litz 1000x0.02 - Grade 1 - Double Served"
+    }
+  },
+  "operating_point": {
+    "point_id": "phase7-ps-psp-demo",
+    "voltage_primary_v": 100.0,
+    "voltage_secondary_v": 25.0,
+    "power_w": 1000.0,
+    "frequency_hz": 100000.0,
+    "ambient_c": 25.0,
+    "currents_rms_a": {"Primary": 0.3, "Secondary": -1.2},
+    "current_waveforms": {
+      "Primary": {"data": [0.3, 0.3, -0.3, -0.3, 0.3], "time": [0.0, 0.0000025, 0.000005, 0.0000075, 0.00001], "frequency_hz": 100000.0},
+      "Secondary": {"data": [-1.2, -1.2, 1.2, 1.2, -1.2], "time": [0.0, 0.0000025, 0.000005, 0.0000075, 0.00001], "frequency_hz": 100000.0}
+    },
+    "voltage_waveforms": {
+      "Primary": {"data": [100.0, 100.0, -100.0, -100.0, 100.0], "time": [0.0, 0.0000025, 0.000005, 0.0000075, 0.00001]},
+      "Secondary": {"data": [25.0, 25.0, -25.0, -25.0, 25.0], "time": [0.0, 0.0000025, 0.000005, 0.0000075, 0.00001]}
+    },
+    "topology": "DAB_SPS",
+    "bridge_duty": 0.5,
+    "reference_side": "primary"
+  },
+  "variables": {
+    "Np": {"optimize": false, "value": 20},
+    "Ns": {"optimize": false, "value": 5},
+    "P1": {"optimize": false, "value": 10},
+    "layout": {"optimize": true, "choices": ["PS", "PSP"]},
+    "interwinding_gap_m": {"min": 0.0004, "max": 0.0008, "step": 0.00005},
+    "core_clearance_m": {"min": 0.0003, "max": 0.0008, "step": 0.00005}
+  },
+  "constraints": {
+    "turns_ratio_target": 4.0,
+    "turns_ratio_tolerance": 0.05,
+    "bmax_max_t": 0.25,
+    "lm_min_h": 0.0001,
+    "lm_max_h": 0.002
+  },
+  "optimizer": {
+    "population_size": 12,
+    "generations": 4,
+    "max_evaluations": 48,
+    "seed": 20261107
+  }
+}

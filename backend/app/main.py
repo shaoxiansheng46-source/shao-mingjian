@@ -26,6 +26,14 @@ from .core.engine import (
     validate_input,
     evaluate_candidate,
 )
+from .evaluation.physical import (
+    PHYSICAL_API_VERSION,
+    PHYSICAL_MODEL_VERSION,
+    build_physical_evaluation,
+    provider_catalog,
+)
+from .providers.openmagnetics import OpenMagneticsProvider
+from .optimization.phase6b_web import register_phase6b_routes
 
 ROOT = Path(__file__).resolve().parents[2]
 FRONTEND = ROOT / "frontend"
@@ -40,6 +48,9 @@ DB = load_database()
 TASKS: dict[str, dict[str, Any]] = {}
 TASK_LOCK = threading.Lock()
 EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="sst-demo")
+PHYSICAL_TASKS: dict[str, dict[str, Any]] = {}
+PHYSICAL_PROVIDER = OpenMagneticsProvider()
+PHASE6B_TASKS = register_phase6b_routes(app, PHYSICAL_PROVIDER, RUNTIME / "phase6b", EXECUTOR)
 
 # Rehydrate completed task snapshots so a restarted demo can still expose the
 # same reproducible input/result pair for report export.
@@ -93,6 +104,31 @@ def run_task(task_id: str, inp: dict[str, Any], mode: str) -> None:
             TASKS[task_id].update({"status": "failed", "error": str(exc), "completed_at": now(), "updated_at": now()})
 
 
+def run_physical_task(task_id: str, payload: dict[str, Any]) -> None:
+    """Run Phase 5A orchestration in its own task namespace.
+
+    The legacy optimization task state is intentionally untouched: a physical
+    evaluation is a single candidate snapshot, not an NSGA-II replacement.
+    """
+
+    try:
+        with TASK_LOCK:
+            PHYSICAL_TASKS[task_id].update({"status": "running", "progress": 0.2, "started_at": now()})
+        result = build_physical_evaluation(payload, db=DB, provider=PHYSICAL_PROVIDER)
+        status = "completed" if result.get("status") not in {"input_invalid", "error"} else result.get("status")
+        with TASK_LOCK:
+            PHYSICAL_TASKS[task_id].update({"status": status, "progress": 1.0, "result": result, "completed_at": now(), "updated_at": now()})
+        (RUNTIME / f"physical-{task_id}.json").write_text(json.dumps({"input": payload, "result": result}, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception as exc:  # keep diagnostics visible to the web client
+        with TASK_LOCK:
+            PHYSICAL_TASKS[task_id].update({"status": "failed", "progress": 1.0, "error": str(exc), "completed_at": now(), "updated_at": now()})
+
+
+def physical_snapshot(task_id: str) -> dict[str, Any]:
+    with TASK_LOCK:
+        return copy.deepcopy(PHYSICAL_TASKS[task_id])
+
+
 @app.get("/")
 def index_page():
     return FileResponse(FRONTEND / "index.html")
@@ -101,6 +137,89 @@ def index_page():
 @app.get("/health")
 def health():
     return {"status": "ok", "engine_version": ENGINE_VERSION, "model_version": MODEL_VERSION, "data_mode": "demo"}
+
+
+@app.get("/api/v1.5/physical/status")
+def physical_status():
+    """Expose provider readiness without exposing third-party objects."""
+
+    return {
+        "api_version": PHYSICAL_API_VERSION,
+        "model_version": PHYSICAL_MODEL_VERSION,
+        "mode": "physical_workbench",
+        "provider": PHYSICAL_PROVIDER.status(),
+        "data_sources": [
+            {"id": "external_database", "label": "OpenMagnetics 外部数据库", "synthetic": False, "engineering_approved": False},
+            {"id": "demo_fixture", "label": "本地虚构数据（仅链路验证）", "synthetic": True, "demo_only": True, "engineering_approved": False},
+        ],
+        "thermal": {"status": "not_implemented", "message": "热模型尚未接入；热点和温升不由旧 Demo 结果替代。"},
+    }
+
+
+@app.get("/api/v1.5/physical/materials")
+def physical_materials(q: str = Query(""), limit: int = Query(25, ge=1, le=100)):
+    return provider_catalog(PHYSICAL_PROVIDER, "materials", q, limit)
+
+
+@app.get("/api/v1.5/physical/cores")
+def physical_cores(q: str = Query(""), limit: int = Query(25, ge=1, le=100)):
+    return provider_catalog(PHYSICAL_PROVIDER, "cores", q, limit)
+
+
+@app.get("/api/v1.5/physical/wires")
+def physical_wires(q: str = Query(""), limit: int = Query(25, ge=1, le=100)):
+    return provider_catalog(PHYSICAL_PROVIDER, "wires", q, limit)
+
+
+@app.post("/api/v1.5/physical/evaluations")
+def create_physical_evaluation(payload: dict[str, Any]):
+    if not isinstance(payload, dict):
+        raise HTTPException(422, "physical_input_must_be_object")
+    task_id = uuid.uuid4().hex[:12]
+    input_hash = __import__("hashlib").sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+    with TASK_LOCK:
+        PHYSICAL_TASKS[task_id] = {
+            "id": task_id,
+            "status": "queued",
+            "mode": "physical_workbench",
+            "progress": 0.0,
+            "input_hash": input_hash,
+            "model_version": PHYSICAL_MODEL_VERSION,
+            "created_at": now(),
+        }
+    EXECUTOR.submit(run_physical_task, task_id, copy.deepcopy(payload))
+    return physical_snapshot(task_id)
+
+
+@app.get("/api/v1.5/physical/evaluations/{task_id}")
+def get_physical_evaluation(task_id: str):
+    with TASK_LOCK:
+        if task_id not in PHYSICAL_TASKS:
+            # A completed snapshot remains available after a server restart.
+            snapshot_file = RUNTIME / f"physical-{task_id}.json"
+            if not snapshot_file.exists():
+                raise HTTPException(404, "physical_evaluation_not_found")
+            snapshot = json.loads(snapshot_file.read_text(encoding="utf-8"))
+            result = snapshot.get("result", {})
+            PHYSICAL_TASKS[task_id] = {"id": task_id, "status": "completed", "progress": 1.0, "result": result, "input_hash": __import__("hashlib").sha256(json.dumps(snapshot.get("input", {}), sort_keys=True).encode()).hexdigest()[:16]}
+    return physical_snapshot(task_id)
+
+
+@app.get("/api/v1.5/physical/evaluations/{task_id}/report")
+def physical_report(task_id: str, format: str = Query("json", pattern="^json$")):
+    del format  # JSON is the traceable Phase 5D export format in this phase.
+    with TASK_LOCK:
+        task = PHYSICAL_TASKS.get(task_id)
+    snapshot_file = RUNTIME / f"physical-{task_id}.json"
+    if task is None and not snapshot_file.exists():
+        raise HTTPException(404, "physical_evaluation_not_found")
+    if snapshot_file.exists():
+        document = json.loads(snapshot_file.read_text(encoding="utf-8"))
+    elif task and "result" in task:
+        document = {"input": None, "result": task["result"]}
+    else:
+        raise HTTPException(409, "physical_evaluation_not_completed")
+    return Response(json.dumps(document, ensure_ascii=False, indent=2), media_type="application/json", headers={"Content-Disposition": f"attachment; filename=physical-{task_id}.json"})
 
 
 @app.get("/api/v1.4/data/summary")

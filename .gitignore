@@ -3,3 +3,4 @@ __pycache__/
 .runtime/
 .pytest_cache/
 .agents/
+output/playwright/

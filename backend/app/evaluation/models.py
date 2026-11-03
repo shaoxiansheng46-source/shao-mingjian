@@ -146,12 +146,16 @@ class OperatingPointSnapshot:
                 voltage_dict = {"waveform": voltage_dict}
             excitations.append({
                 "name": name,
+                "frequency": current.frequency_hz,
+                "frequency_hz": current.frequency_hz,
                 "voltage": voltage_dict,
                 "current": current_dict,
             })
         if missing:
             return None, missing
         return {
+            "name": self.point_id,
+            "conditions": {"ambientTemperature": float(self.ambient_c)},
             "excitationsPerWinding": excitations,
             "topology": self.topology,
             "frequency_hz": self.frequency_hz,

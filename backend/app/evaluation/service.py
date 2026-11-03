@@ -177,6 +177,7 @@ class UnifiedEvaluationService:
         winding_model: str = "native_dc",
         include_openmagnetics: bool = False,
         temperature_c: float | None = None,
+        provider_inputs: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Evaluate one candidate without changing the optimizer or UI state."""
 
@@ -190,6 +191,7 @@ class UnifiedEvaluationService:
             "leakage_model": leakage_model,
             "winding_model": winding_model,
             "include_openmagnetics": include_openmagnetics,
+            "provider_inputs": canonical_payload(provider_inputs or {}),
         })
         result: dict[str, Any] = {
             "status": "infeasible" if not candidate.layout.feasible else "partial",
@@ -250,11 +252,22 @@ class UnifiedEvaluationService:
 
         temperature = operating_point.ambient_c if temperature_c is None else float(temperature_c)
         waveforms = operating_point.current_waveform_objects()
+        provider_operating_point: dict[str, Any] | None = None
+        provider_op_diagnostics: list[dict[str, Any]] = []
+        magnetic_for_provider: dict[str, Any] | None = None
+        if include_openmagnetics and self.joint_service is not None:
+            try:
+                magnetic_for_provider = self.joint_service.adapter.to_magnetic(candidate.layout)
+                electrical_names = [item["name"] for item in magnetic_for_provider["coil"]["functionalDescription"]]
+                provider_operating_point, provider_op_diagnostics = operating_point.provider_operating_point(electrical_names)
+            except Exception as exc:
+                provider_op_diagnostics = [_diagnostic("OPENMAGNETICS_INPUT_MAPPING_FAILED", f"{type(exc).__name__}: {exc}")]
         winding = self.winding_loss_service.calculate(
             candidate.layout,
             wire_specs=candidate.wire_specs,
             waveforms=waveforms,
             model=winding_model,
+            operating_point=provider_operating_point,
             temperature_c=temperature,
         )
         current_diagnostics = self._validate_current_snapshot(candidate, operating_point, winding)
@@ -281,9 +294,9 @@ class UnifiedEvaluationService:
             else:
                 electrical_names = []
                 try:
-                    magnetic = self.joint_service.adapter.to_magnetic(candidate.layout)
-                    electrical_names = [item["name"] for item in magnetic["coil"]["functionalDescription"]]
-                    provider_op, op_diagnostics = operating_point.provider_operating_point(electrical_names)
+                    magnetic = magnetic_for_provider or self.joint_service.adapter.to_magnetic(candidate.layout)
+                    provider_op, op_diagnostics = provider_operating_point, provider_op_diagnostics
+                    provider_op_diagnostics = list(op_diagnostics)
                     if op_diagnostics:
                         result["openmagnetics"] = {
                             "status": "input_invalid",
@@ -292,10 +305,13 @@ class UnifiedEvaluationService:
                             "diagnostics": op_diagnostics,
                         }
                     else:
+                        joint_inputs = dict(provider_inputs or {})
+                        if "operatingPoints" not in joint_inputs:
+                            joint_inputs["operatingPoints"] = [{"name": operating_point.point_id, "conditions": {"ambientTemperature": operating_point.ambient_c}, **provider_op}]
                         result["openmagnetics"] = self.joint_service.calculate(
                             candidate.layout,
                             operating_point=provider_op,
-                            inputs={"frequency_hz": operating_point.frequency_hz, "power_w": operating_point.power_w},
+                            inputs=joint_inputs,
                             temperature_c=temperature,
                         )
                 except Exception as exc:
